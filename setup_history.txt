@@ -1,0 +1,108 @@
+sudo apt update
+sudo apt install -y freecad
+sudo useradd -m -s /bin/bash caduser
+sudo passwd caduser    
+sudo -u caduser mkdir -p /home/caduser/sessions
+wget https://d1uj6qtbmh3dt5.cloudfront.net/2024.0/Servers/nice-dcv-2024.0-19030-ubuntu2204-x86_64.tgz
+tar -xzf nice-dcv-2024.0-19030-ubuntu2204-x86_64.tgz
+cd nice-dcv-2024.0-19030-ubuntu2204-x86_64
+# Install DCV server + web viewer + virtual display
+sudo apt install -y ./nice-dcv-server_*.deb ./nice-dcv-web-viewer_*.deb ./nice-xdcv_*.deb
+# (Optional: only if you later use a GPU instance with NVIDIA drivers)
+# sudo apt install -y ./nice-dcv-gl_*.deb
+# Enable and start the DCV service
+sudo systemctl enable --now dcvserver
+cat <<'EOF' | sudo tee /usr/local/bin/launch_freecad.sh
+#!/usr/bin/env bash
+set -e
+DOC="${1:-/home/caduser/sessions/start.FCStd}"
+exec /usr/bin/freecad "$DOC"
+EOF
+
+sudo chmod +x /usr/local/bin/launch_freecad.sh
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh /home/caduser/sessions/start.FCStd" freecad-test
+ls -l /usr/local/bin/launch_freecad.sh
+sudo dcv list-sessions
+sudo dcv close-session freecad-test
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh" freecad-test --   /home/caduser/sessions/start.FCStd
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh /home/caduser/sessions/start.FCStd" freecad-test
+sudo tee /usr/local/bin/launch_freecad.sh > /dev/null <<'EOF'
+#!/usr/bin/env bash
+exec /usr/bin/freecad /home/caduser/sessions/start.FCStd
+EOF
+
+sudo chmod +x /usr/local/bin/launch_freecad.sh
+sudo dcv list-sessions
+sudo dcv close-session freecad-test
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh" freecad-test
+ls -l /usr/local/bin/launch_freecad.sh
+ls -l /home/caduser/sessions/start.FCStd
+# See it with elevated permissions
+sudo ls -l /home/caduser/sessions/start.FCStd
+# Make sure the sessions folder exists
+sudo -u caduser mkdir -p /home/caduser/sessions
+# Create an empty FreeCAD file placeholder
+sudo -u caduser touch /home/caduser/sessions/start.FCStd
+# Double-check that it exists now
+sudo ls -l /home/caduser/sessions/
+sudo dcv close-session freecad-test   # (only if it exists already)
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh" freecad-test
+sudo dcv list-sessions
+sudo dcv close-session freecad-test
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh" freecad-test
+sudo dcv list-sessions
+sudo apt update
+sudo apt install -y wmctrl
+cat <<'EOF' | sudo tee /usr/local/bin/launch_freecad.sh
+#!/usr/bin/env bash
+set -e
+
+DOC="${1:-/home/caduser/sessions/start.FCStd}"
+
+# Start FreeCAD in background
+/usr/bin/freecad "$DOC" &
+
+APP_PID=$!
+
+# Give it a moment to create a window
+sleep 3
+
+# Maximize the FreeCAD window
+wmctrl -r "FreeCAD" -b add,maximized_vert,maximized_horz || true
+
+# Wait for FreeCAD to exit so the session stays alive
+wait $APP_PID
+EOF
+
+# Make it executable
+sudo chmod +x /usr/local/bin/launch_freecad.sh
+cat <<'EOF' | sudo tee /usr/local/bin/launch_freecad.sh
+#!/usr/bin/env bash
+set -e
+
+DOC="${1:-/home/caduser/sessions/start.FCStd}"
+
+# Start FreeCAD in background
+/usr/bin/freecad "$DOC" &
+
+APP_PID=$!
+
+# Give it a moment to create a window
+sleep 3
+
+# Maximize the FreeCAD window
+wmctrl -r "FreeCAD" -b add,maximized_vert,maximized_horz || true
+
+# Wait for FreeCAD to exit so the session stays alive
+wait $APP_PID
+EOF
+
+# Make it executable
+sudo chmod +x /usr/local/bin/launch_freecad.sh
+sudo dcv close-session freecad-test
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh /home/caduser/sessions/start.FCStd" freecad-test
+ls -l /usr/local/bin/launch_freecad.sh
+-rwxr-xr-x 1 root root  300 Sep 6 20:30 /usr/local/bin/launch_freecad.sh
+sudo dcv create-session --type virtual --owner caduser   --init "/usr/local/bin/launch_freecad.sh" freecad-test --   /home/caduser/sessions/start.FCStd
+sudo dcv create-session freecad-test   --type virtual   --owner caduser   --init "/usr/local/bin/launch_freecad.sh"
+sudo dcv list-sessions
