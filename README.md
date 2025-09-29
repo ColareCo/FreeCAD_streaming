@@ -80,22 +80,33 @@ If you prefer manual setup, follow the detailed steps in the [README.md](README.
 - **FreeCAD**: `launch_freecad.sh` - Launches FreeCAD with window maximization
 - **KiCad**: `launch_kicad.sh` - Launches KiCad with window maximization
 
-### KiCad Maximization Configuration
-KiCad stores its window state in `/home/caduser/.config/kicad/6.0/kicad.json`. To enable automatic maximization:
+### KiCad Automation Configuration
+KiCad streaming is fully automated with the following workflow:
 
-1. **Manual Setup**: Run KiCad once, resize it manually, then close properly
-2. **Edit Config**: Change `"maximized": false` to `"maximized": true` in the JSON file
-3. **Automatic**: KiCad will now open maximized on every launch
+1. **Project Creation**: Automatically creates a new KiCad project
+2. **Direct Schematic Editor**: Launches `eeschema` directly (skips main KiCad page)
+3. **Automatic Maximization**: Uses multiple window management techniques
+4. **Fixed Project Name**: Uses `kicad-project` to avoid duplicates
 
-**Key Setting**:
-```json
-"window": {
-    "maximized": true,
-    "pos_x": 0,
-    "pos_y": 0,
-    "size_x": 1520,
-    "size_y": 907
-}
+**Key Components**:
+- **Launch Script**: `launch_kicad.sh` - Creates project and launches schematic editor
+- **KiCad Config**: `kicad.json` with `"maximized": true` for window state
+- **Window Management**: `wmctrl` commands for forced maximization
+- **Direct Launch**: `eeschema project.kicad_sch` bypasses main KiCad interface
+
+**Workflow**:
+```bash
+# 1. Create project
+kicad --new kicad-project
+
+# 2. Close main KiCad
+pkill -f "kicad.*kicad-project"
+
+# 3. Launch schematic editor directly
+eeschema kicad-project.kicad_sch
+
+# 4. Force maximization
+wmctrl -r "eeschema" -b add,maximized_vert,maximized_horz
 ```
 
 ## 📊 Current Instance Status
