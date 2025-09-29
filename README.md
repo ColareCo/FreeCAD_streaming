@@ -80,6 +80,24 @@ If you prefer manual setup, follow the detailed steps in the [README.md](README.
 - **FreeCAD**: `launch_freecad.sh` - Launches FreeCAD with window maximization
 - **KiCad**: `launch_kicad.sh` - Launches KiCad with window maximization
 
+### KiCad Maximization Configuration
+KiCad stores its window state in `/home/caduser/.config/kicad/6.0/kicad.json`. To enable automatic maximization:
+
+1. **Manual Setup**: Run KiCad once, resize it manually, then close properly
+2. **Edit Config**: Change `"maximized": false` to `"maximized": true` in the JSON file
+3. **Automatic**: KiCad will now open maximized on every launch
+
+**Key Setting**:
+```json
+"window": {
+    "maximized": true,
+    "pos_x": 0,
+    "pos_y": 0,
+    "size_x": 1520,
+    "size_y": 907
+}
+```
+
 ## 📊 Current Instance Status
 
 - **Instance ID**: `i-0ae2f36310c17a92f`
