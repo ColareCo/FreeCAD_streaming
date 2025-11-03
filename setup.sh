@@ -13,6 +13,10 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
+# Save the repo directory path
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "📁 Repository directory: $REPO_DIR"
+
 # Update system
 echo "📦 Updating system packages..."
 sudo apt update
@@ -50,13 +54,13 @@ sudo apt install -y ./nice-dcv-server_*.deb ./nice-dcv-web-viewer_*.deb ./nice-x
 
 # Configure DCV
 echo "⚙️  Configuring DCV..."
-sudo cp dcv.conf /etc/dcv/dcv.conf
-sudo cp public.perm /etc/dcv/public.perm
+sudo cp "$REPO_DIR/dcv.conf" /etc/dcv/dcv.conf
+sudo cp "$REPO_DIR/public.perm" /etc/dcv/public.perm
 
 # Setup launch scripts
 echo "📝 Setting up launch scripts..."
-sudo cp launch_freecad.sh /usr/local/bin/launch_freecad.sh
-sudo cp launch_kicad.sh /usr/local/bin/launch_kicad.sh
+sudo cp "$REPO_DIR/launch_freecad.sh" /usr/local/bin/launch_freecad.sh
+sudo cp "$REPO_DIR/launch_kicad.sh" /usr/local/bin/launch_kicad.sh
 sudo chmod +x /usr/local/bin/launch_*.sh
 
 # Create project files
@@ -75,14 +79,20 @@ echo "🎯 Creating DCV sessions..."
 sudo dcv create-session --type virtual --owner caduser --init '/usr/local/bin/launch_freecad.sh' freecad-test
 sudo dcv create-session --type virtual --owner caduser --init '/usr/local/bin/launch_kicad.sh' kicad-test
 
-# Get public IP
-PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+# Get public IP (with timeout to prevent hanging)
+PUBLIC_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "UNABLE_TO_DETECT")
 
 echo ""
 echo "🎉 Setup Complete!"
 echo ""
 echo "📋 Access Information:"
-echo "   URL: https://$PUBLIC_IP:8443"
+if [ "$PUBLIC_IP" = "UNABLE_TO_DETECT" ]; then
+    echo "   ⚠️  Could not auto-detect public IP."
+    echo "   Please check your EC2 instance public IP in AWS console."
+    echo "   URL: https://YOUR_EC2_PUBLIC_IP:8443"
+else
+    echo "   URL: https://$PUBLIC_IP:8443"
+fi
 echo "   Username: caduser"
 echo "   Password: freecad123"
 echo ""
