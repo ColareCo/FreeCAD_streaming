@@ -70,6 +70,10 @@ if [ -f "$REPO_DIR/escDesign.kicad_sch" ]; then
     sudo cp "$REPO_DIR/escDesign.kicad_sch" /home/caduser/schematics/
     sudo chown caduser:caduser /home/caduser/schematics/escDesign.kicad_sch
     echo "✅ Copied escDesign.kicad_sch"
+    
+    # Create KiCad project file for the schematic
+    sudo -u caduser touch /home/caduser/schematics/escDesign.kicad_pro
+    echo "✅ Created escDesign.kicad_pro project file"
 else
     echo "⚠️  Warning: escDesign.kicad_sch not found in repo"
 fi
