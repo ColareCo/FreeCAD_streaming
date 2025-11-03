@@ -18,14 +18,14 @@ This setup enables remote access to CAD applications (FreeCAD, KiCad) through a 
 ```
 FreeCAD_streaming/
 ├── README.md                 # This file
-├── setup.sh                 # Automated setup script
+├── TROUBLESHOOTING.md        # Troubleshooting guide
+├── setup.sh                  # Automated setup script
 ├── dcv.conf                  # DCV server configuration
 ├── public.perm               # DCV permissions file
 ├── launch_freecad.sh         # FreeCAD launch script
 ├── launch_kicad.sh           # KiCad launch script
-├── setup_history.txt         # Original setup commands
-├── freecad_key.pem           # SSH key for EC2 access
-└── scripts/                  # Automation scripts (future)
+├── kicad.json                # KiCad configuration (maximization settings)
+└── freecad_key.pem           # SSH key for EC2 access
 ```
 
 ## 🚀 Quick Start
@@ -51,18 +51,38 @@ FreeCAD_streaming/
 
 3. **Access your CAD streaming server**
    - URL: `https://YOUR_EC2_IP:8443`
-   - No authentication required
+   - **No authentication required** - login happens automatically
    - Choose between FreeCAD or KiCad sessions
 
-### Manual Setup
-
-If you prefer manual setup, follow the detailed steps in the [README.md](README.md) file.
 
 ## 🌐 Access
 
+### Starting a KiCad Session (For Users)
+
+**Method 1: Access via Web Browser**
+1. Navigate to: `https://YOUR_EC2_IP:8443`
+2. **No login credentials needed** - access is automatic with no authentication
+3. Select an available KiCad session from the list
+4. KiCad will launch automatically with the ESC Design schematic
+
+**Method 2: Direct Session URL**
+- Use the direct session URL: `https://YOUR_EC2_IP:8443/#kicad-test`
+- Opens KiCad immediately without session selection
+
+**Method 3: Iframe Embedding**
+- Use the iframe URL in your web application
+- See the "Embedding Sessions in Iframes" section below for details
+
+### Authentication
+- **Authentication is disabled** (`authentication="none"` in `dcv.conf`)
+- No username/password required
+- Sessions are public and accessible to anyone with the URL
+- **Note**: In production, you may want to enable authentication or use firewall rules to restrict access
+
+### Session Details
 - **URL**: `https://YOUR_EC2_IP:8443`
-- **Authentication**: None (automatic login)
 - **Sessions**: Choose between FreeCAD or KiCad
+- **Owner**: Sessions run as `caduser` automatically
 
 ## 🔧 Configuration Details
 
@@ -132,6 +152,75 @@ sudo dcv create-session --type virtual --owner caduser --init '/usr/local/bin/la
 ```bash
 sudo dcv close-session session-name
 ```
+
+## 📱 Embedding Sessions in Iframes
+
+DCV sessions can be embedded in iframes for integration into assessment platforms or web applications.
+
+### Configuration for Iframe Embedding
+
+The DCV server must be configured to allow iframe embedding. This is done in `dcv.conf`:
+
+```ini
+[connectivity]
+# Allow iframe embedding by removing X-Frame-Options restriction
+web-x-frame-options = ""
+
+# Set Content-Security-Policy to allow iframe embedding
+# Replace with your actual assessment platform domain for security
+web-extra-http-headers = [("Content-Security-Policy", "frame-ancestors *")]
+```
+
+**Security Note**: For production, replace `*` with your specific domain:
+```ini
+web-extra-http-headers = [("Content-Security-Policy", "frame-ancestors https://your-assessment-domain.com https://*.your-assessment-domain.com")]
+```
+
+### Applying Configuration
+
+1. **Update the configuration file** on your EC2 instance:
+   ```bash
+   sudo cp dcv.conf /etc/dcv/dcv.conf
+   ```
+
+2. **Restart DCV server**:
+   ```bash
+   sudo systemctl restart dcvserver
+   ```
+
+### Direct Session URL Format
+
+Sessions can be accessed directly using:
+```
+https://YOUR_EC2_IP:8443/#session-name
+```
+
+**Example**: For KiCad session `kicad-test`:
+```
+https://3.15.234.4:8443/#kicad-test
+```
+
+### HTML Iframe Code
+
+Embed the session in your assessment platform using:
+
+```html
+<iframe
+    src="https://3.15.234.4:8443/#kicad-test"
+    allow="microphone; fullscreen; clipboard-read; clipboard-write"
+    width="100%"
+    height="800px"
+    frameborder="0"
+    title="KiCad Schematic Editor"
+></iframe>
+```
+
+**Iframe Attributes**:
+- `src`: Direct session URL with `#session-name` format
+- `allow`: Permissions for microphone, fullscreen, and clipboard access
+- `width`/`height`: Size of the embedded viewer
+- `frameborder`: Remove iframe border
+- `title`: Accessibility label
 
 ## 🚀 Future Enhancements
 
