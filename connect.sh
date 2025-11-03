@@ -23,13 +23,16 @@ fi
 chmod 400 "$KEY_FILE"
 echo "✅ SSH key permissions set"
 
-# Prompt for EC2 IP address if not provided
+# Default EC2 IP address (can be overridden with command line argument)
+DEFAULT_IP="3.15.234.4"
+
+# Use provided IP or default
 if [ -z "$1" ]; then
-    echo ""
-    echo "📝 Enter the EC2 Public IP address:"
-    read -p "IP: " EC2_IP
+    EC2_IP="$DEFAULT_IP"
+    echo "📡 Using default EC2 IP: $EC2_IP"
 else
     EC2_IP="$1"
+    echo "📡 Using provided EC2 IP: $EC2_IP"
 fi
 
 # Validate IP format (basic check)

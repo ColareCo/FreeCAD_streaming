@@ -46,14 +46,14 @@ If you need to modify the server configuration, launch scripts, or schematic fil
 2. **Connect to the EC2 instance**
    ```bash
    ./connect.sh
-   # Enter the EC2 public IP when prompted
+   # Automatically connects to 3.15.234.4
    ```
 
 3. **Manage DCV sessions (run this ON the EC2 instance after connecting)**
    ```bash
    # First, copy the session manager to the EC2 instance
    # (Do this once from your local machine before connecting)
-   scp -i freecad_key.pem session-manager.sh ubuntu@YOUR_EC2_IP:~/
+   scp -i freecad_key.pem session-manager.sh ubuntu@3.15.234.4:~/
    
    # Then after SSH'ing in with ./connect.sh:
    chmod +x session-manager.sh
@@ -160,9 +160,12 @@ wmctrl -r "eeschema" -b add,maximized_vert,maximized_horz
 
 ## 📊 Current Instance Status
 
-- **Instance ID**: `i-0ae2f36310c17a92f`
+- **Instance ID**: `i-02f36310c17a92f`
 - **Public IP**: `3.15.234.4`
-- **Active Sessions**: `kicad-test` (KiCad only)
+- **Access URL**: https://3.15.234.4:8443
+- **Direct Links**:
+  - FreeCAD: https://3.15.234.4:8443/#freecad-test
+  - KiCad: https://3.15.234.4:8443/#kicad-test
 - **Status**: Running and accessible
 
 ## 🛠️ Helper Scripts
@@ -174,7 +177,7 @@ Simplifies connecting to the EC2 instance. No need to remember SSH commands or k
 ```bash
 # From your local machine:
 ./connect.sh
-# Enter the EC2 IP when prompted
+# Automatically connects to 3.15.234.4 (no input needed!)
 ```
 
 **What it does:**
@@ -188,7 +191,7 @@ Interactive menu for managing DCV sessions. Run this ON the EC2 instance.
 
 ```bash
 # First time: Copy to EC2
-scp -i freecad_key.pem session-manager.sh ubuntu@YOUR_EC2_IP:~/
+scp -i freecad_key.pem session-manager.sh ubuntu@3.15.234.4:~/
 
 # Then SSH in and run:
 ./session-manager.sh
