@@ -23,7 +23,7 @@ sudo apt update
 
 # Install required packages
 echo "🔧 Installing required packages..."
-sudo apt install -y wget curl wmctrl
+sudo apt install -y wget curl wmctrl xdotool x11-xserver-utils
 
 # Install CAD tools
 echo "🎨 Installing CAD tools..."
@@ -39,8 +39,9 @@ else
     echo "ℹ️  caduser already exists"
 fi
 
-# Create sessions directory
+# Create sessions directory and schematics directory
 sudo -u caduser mkdir -p /home/caduser/sessions
+sudo -u caduser mkdir -p /home/caduser/schematics
 
 # Download and install DCV
 echo "📥 Downloading DCV..."
@@ -62,6 +63,16 @@ echo "📝 Setting up launch scripts..."
 sudo cp "$REPO_DIR/launch_freecad.sh" /usr/local/bin/launch_freecad.sh
 sudo cp "$REPO_DIR/launch_kicad.sh" /usr/local/bin/launch_kicad.sh
 sudo chmod +x /usr/local/bin/launch_*.sh
+
+# Copy schematic files
+echo "📐 Setting up schematic files..."
+if [ -f "$REPO_DIR/escDesign.kicad_sch" ]; then
+    sudo cp "$REPO_DIR/escDesign.kicad_sch" /home/caduser/schematics/
+    sudo chown caduser:caduser /home/caduser/schematics/escDesign.kicad_sch
+    echo "✅ Copied escDesign.kicad_sch"
+else
+    echo "⚠️  Warning: escDesign.kicad_sch not found in repo"
+fi
 
 # Create project files
 sudo -u caduser touch /home/caduser/sessions/start.FCStd

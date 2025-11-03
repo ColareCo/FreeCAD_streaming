@@ -25,6 +25,7 @@ FreeCAD_streaming/
 ├── launch_freecad.sh         # FreeCAD launch script
 ├── launch_kicad.sh           # KiCad launch script
 ├── kicad.json                # KiCad configuration (maximization settings)
+├── escDesign.kicad_sch       # Sample KiCad schematic file
 └── freecad_key.pem           # SSH key for EC2 access
 ```
 
