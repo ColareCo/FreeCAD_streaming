@@ -19,7 +19,9 @@ This setup enables remote access to CAD applications (FreeCAD, KiCad) through a 
 FreeCAD_streaming/
 ├── README.md                 # This file
 ├── TROUBLESHOOTING.md        # Troubleshooting guide
-├── setup.sh                  # Automated setup script
+├── setup.sh                  # Automated setup script for new instances
+├── connect.sh                # Helper script to SSH into EC2 instance
+├── session-manager.sh        # Helper script to manage DCV sessions
 ├── dcv.conf                  # DCV server configuration
 ├── public.perm               # DCV permissions file
 ├── launch_freecad.sh         # FreeCAD launch script
@@ -31,26 +33,52 @@ FreeCAD_streaming/
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- AWS EC2 instance (Ubuntu 22.04)
-- SSH access to the instance
-- Domain/IP address for DCV access
+### For Developers (Editing Server Configuration)
 
-### Automated Setup
+If you need to modify the server configuration, launch scripts, or schematic files:
 
-1. **Clone this repository to your EC2 instance**
+1. **Clone this repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/ColareCo/FreeCAD_streaming.git
    cd FreeCAD_streaming
    ```
 
-2. **Run the automated setup script**
+2. **Connect to the EC2 instance**
+   ```bash
+   ./connect.sh
+   # Enter the EC2 public IP when prompted
+   ```
+
+3. **Manage DCV sessions (run this ON the EC2 instance after connecting)**
+   ```bash
+   # First, copy the session manager to the EC2 instance
+   # (Do this once from your local machine before connecting)
+   scp -i freecad_key.pem session-manager.sh ubuntu@YOUR_EC2_IP:~/
+   
+   # Then after SSH'ing in with ./connect.sh:
+   chmod +x session-manager.sh
+   ./session-manager.sh
+   ```
+
+### For Setting Up a New Instance
+
+If you're creating a fresh DCV streaming server:
+
+1. **Launch an Ubuntu 22.04 EC2 instance**
+
+2. **Clone this repository to your EC2 instance**
+   ```bash
+   git clone https://github.com/ColareCo/FreeCAD_streaming.git
+   cd FreeCAD_streaming
+   ```
+
+3. **Run the automated setup script**
    ```bash
    chmod +x setup.sh
    ./setup.sh
    ```
 
-3. **Access your CAD streaming server**
+4. **Access your CAD streaming server**
    - URL: `https://YOUR_EC2_IP:8443`
    - **No authentication required** - login happens automatically
    - Choose between FreeCAD or KiCad sessions
@@ -137,7 +165,45 @@ wmctrl -r "eeschema" -b add,maximized_vert,maximized_horz
 - **Active Sessions**: `kicad-test` (KiCad only)
 - **Status**: Running and accessible
 
-## 🔄 Session Management
+## 🛠️ Helper Scripts
+
+### `connect.sh` - Easy SSH Access
+
+Simplifies connecting to the EC2 instance. No need to remember SSH commands or key paths.
+
+```bash
+# From your local machine:
+./connect.sh
+# Enter the EC2 IP when prompted
+```
+
+**What it does:**
+- Automatically sets correct permissions on the SSH key
+- Validates IP address format
+- Connects you to the EC2 instance as ubuntu user
+
+### `session-manager.sh` - DCV Session Management
+
+Interactive menu for managing DCV sessions. Run this ON the EC2 instance.
+
+```bash
+# First time: Copy to EC2
+scp -i freecad_key.pem session-manager.sh ubuntu@YOUR_EC2_IP:~/
+
+# Then SSH in and run:
+./session-manager.sh
+```
+
+**What it does:**
+- Lists all active sessions
+- Creates missing sessions (freecad-test, kicad-test)
+- Shows access URLs with your public IP
+- Restarts specific sessions (useful after editing launch scripts)
+- Option 5: Does everything at once (recommended)
+
+## 🔄 Manual Session Management
+
+If you prefer manual commands instead of the helper script:
 
 ### List Sessions
 ```bash
