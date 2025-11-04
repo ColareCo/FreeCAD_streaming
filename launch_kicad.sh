@@ -18,7 +18,7 @@ SCHEMATIC_PATH="/home/caduser/schematics/escDesign.kicad_sch"
 echo "📐 Opening schematic directly: $SCHEMATIC_PATH" >&2
 
 # Launch schematic editor directly with the ESC design
-/usr/bin/kicad-cli sch eeschema "$SCHEMATIC_PATH" &
+/usr/bin/eeschema "$SCHEMATIC_PATH" &
 
 APP_PID=$!
 
