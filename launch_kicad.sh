@@ -43,46 +43,46 @@ SCREEN_H=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $2}' || \
 
 echo "🖥️  Detected display size: ${SCREEN_W}x${SCREEN_H}" >&2
 
-# Get window ID early for direct control - try multiple window title variations
-WINDOW_ID=$($XDOTOOL search --name "Schematic Editor" 2>/dev/null | head -1 || \
+# Get window ID early for direct control - search for any window
+# KiCad 9.x might use different window titles
+WINDOW_ID=$($XDOTOOL search --class "kicad" 2>/dev/null | head -1 || \
+            $XDOTOOL search --name "Schematic" 2>/dev/null | head -1 || \
             $XDOTOOL search --name "escDesign" 2>/dev/null | head -1 || \
-            $XDOTOOL search --name "KiCad" 2>/dev/null | head -1 || echo "")
+            $XDOTOOL search --class "eeschema" 2>/dev/null | head -1 || echo "")
 
 if [ -n "$WINDOW_ID" ]; then
     echo "✅ Found schematic editor window ID: $WINDOW_ID" >&2
+else
+    echo "⚠️  Warning: Could not find window ID, trying name-based maximization" >&2
 fi
 
 # AGGRESSIVE window resizing - try FULLSCREEN mode to force fill
 echo "🎯 Attempting fullscreen mode to force window to fill display..." >&2
 
-for i in {1..20}; do
-    # Try fullscreen mode (should force window to fill entire display)
-    wmctrl -r "Schematic Editor" -b add,fullscreen 2>/dev/null || \
-    wmctrl -r "escDesign" -b add,fullscreen 2>/dev/null || \
-    wmctrl -r "KiCad" -b add,fullscreen 2>/dev/null || true
-    
-    # Also try removing decorations and setting to fullscreen
-    wmctrl -r "Schematic Editor" -b remove,decorated 2>/dev/null || true
-    wmctrl -r "escDesign" -b remove,decorated 2>/dev/null || true
-    wmctrl -r "Schematic Editor" -b add,fullscreen 2>/dev/null || true
-    wmctrl -r "escDesign" -b add,fullscreen 2>/dev/null || true
-    
-    # Use xdotool to send F11 (fullscreen toggle) if window ID found
+for i in {1..25}; do
+    # If we have a window ID, use direct manipulation (most reliable)
     if [ -n "$WINDOW_ID" ]; then
         $XDOTOOL windowactivate "$WINDOW_ID" 2>/dev/null || true
-        $XDOTOOL key --window "$WINDOW_ID" F11 2>/dev/null || true
-        sleep 0.2
-        # Also try exact positioning
         $XDOTOOL windowmove "$WINDOW_ID" 0 0 2>/dev/null || true
         $XDOTOOL windowsize "$WINDOW_ID" ${SCREEN_W} ${SCREEN_H} 2>/dev/null || true
+        # Try F11 fullscreen toggle
+        $XDOTOOL key --window "$WINDOW_ID" F11 2>/dev/null || true
     fi
     
-    # Fallback: try maximize if fullscreen doesn't work
-    wmctrl -r "Schematic Editor" -b add,maximized_vert,maximized_horz 2>/dev/null || \
-    wmctrl -r "escDesign" -b add,maximized_vert,maximized_horz 2>/dev/null || \
-    wmctrl -r "KiCad" -b add,maximized_vert,maximized_horz 2>/dev/null || true
+    # Also try wmctrl with class and name matching (more permissive)
+    wmctrl -x -r "kicad" -b add,maximized_vert,maximized_horz 2>/dev/null || true
+    wmctrl -x -r "eeschema" -b add,maximized_vert,maximized_horz 2>/dev/null || true
+    wmctrl -r ":ACTIVE:" -b add,maximized_vert,maximized_horz 2>/dev/null || true
     
-    sleep 0.15
+    # Try removing decorations for more screen space
+    wmctrl -x -r "kicad" -b remove,decorations 2>/dev/null || true
+    wmctrl -x -r "eeschema" -b remove,decorations 2>/dev/null || true
+    
+    # Try fullscreen as well
+    wmctrl -x -r "kicad" -b add,fullscreen 2>/dev/null || true
+    wmctrl -x -r "eeschema" -b add,fullscreen 2>/dev/null || true
+    
+    sleep 0.1
 done
 
 echo "✅ Window resizing attempts complete" >&2
