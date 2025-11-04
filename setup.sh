@@ -78,6 +78,19 @@ else
     echo "⚠️  Warning: escDesign.kicad_sch not found in repo"
 fi
 
+# Setup KiCad configuration for large window size
+echo "⚙️  Setting up KiCad configuration..."
+sudo -u caduser mkdir -p /home/caduser/.config/kicad
+if [ -f "$REPO_DIR/kicad.json" ]; then
+    sudo cp "$REPO_DIR/kicad.json" /home/caduser/.config/kicad/kicad.json
+    # Also copy to eeschema config location
+    sudo cp "$REPO_DIR/kicad.json" /home/caduser/.config/kicad/eeschema.json
+    sudo chown -R caduser:caduser /home/caduser/.config/kicad
+    echo "✅ Configured KiCad with large window size settings"
+else
+    echo "⚠️  Warning: kicad.json not found in repo"
+fi
+
 # Create project files
 sudo -u caduser touch /home/caduser/sessions/start.FCStd
 sudo -u caduser touch /home/caduser/sessions/kicad-project.kicad_pro
