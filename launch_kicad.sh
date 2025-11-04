@@ -12,13 +12,13 @@ sleep 1
 CURRENT_RES=$($XRANDR 2>/dev/null | grep -oP '\d+x\d+' | head -1 || echo "unknown")
 echo "📐 Detected X display resolution: $CURRENT_RES (using DCV's dynamic size)" >&2
 
-# Open the main KiCad project manager with ESC Design
-PROJECT_PATH="/home/caduser/schematics/escDesign.kicad_pro"
+# Open the ESC Design schematic directly in the schematic editor
+SCHEMATIC_PATH="/home/caduser/schematics/escDesign.kicad_sch"
 
-echo "📐 Opening KiCad project manager" >&2
+echo "📐 Opening schematic directly: $SCHEMATIC_PATH" >&2
 
-# Launch main KiCad window (shows the project with editor buttons)
-/usr/bin/kicad "$PROJECT_PATH" &
+# Launch schematic editor directly with the ESC design
+/usr/bin/kicad-cli sch eeschema "$SCHEMATIC_PATH" &
 
 APP_PID=$!
 
@@ -29,7 +29,7 @@ sleep 3
 # Find xdotool path
 XDOTOOL=$(which xdotool 2>/dev/null || find /usr/bin /bin -name xdotool 2>/dev/null | head -1 || echo "xdotool")
 
-# Wait a bit longer for KiCad to fully initialize
+# Wait a bit longer for schematic editor to fully initialize
 sleep 2
 
 # Detect actual screen dimensions dynamically FIRST (before trying to resize)
@@ -43,12 +43,13 @@ SCREEN_H=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $2}' || \
 
 echo "🖥️  Detected display size: ${SCREEN_W}x${SCREEN_H}" >&2
 
-# Get window ID early for direct control
-WINDOW_ID=$($XDOTOOL search --name "KiCad" 2>/dev/null | head -1 || \
-            $XDOTOOL search --name "kicad" 2>/dev/null | head -1 || echo "")
+# Get window ID early for direct control - try multiple window title variations
+WINDOW_ID=$($XDOTOOL search --name "Schematic Editor" 2>/dev/null | head -1 || \
+            $XDOTOOL search --name "escDesign" 2>/dev/null | head -1 || \
+            $XDOTOOL search --name "KiCad" 2>/dev/null | head -1 || echo "")
 
 if [ -n "$WINDOW_ID" ]; then
-    echo "✅ Found KiCad window ID: $WINDOW_ID" >&2
+    echo "✅ Found schematic editor window ID: $WINDOW_ID" >&2
 fi
 
 # AGGRESSIVE window resizing - try FULLSCREEN mode to force fill
@@ -56,14 +57,15 @@ echo "🎯 Attempting fullscreen mode to force window to fill display..." >&2
 
 for i in {1..20}; do
     # Try fullscreen mode (should force window to fill entire display)
-    wmctrl -r "KiCad" -b add,fullscreen 2>/dev/null || \
-    wmctrl -r "kicad" -b add,fullscreen 2>/dev/null || true
+    wmctrl -r "Schematic Editor" -b add,fullscreen 2>/dev/null || \
+    wmctrl -r "escDesign" -b add,fullscreen 2>/dev/null || \
+    wmctrl -r "KiCad" -b add,fullscreen 2>/dev/null || true
     
     # Also try removing decorations and setting to fullscreen
-    wmctrl -r "KiCad" -b remove,decorated 2>/dev/null || true
-    wmctrl -r "kicad" -b remove,decorated 2>/dev/null || true
-    wmctrl -r "KiCad" -b add,fullscreen 2>/dev/null || true
-    wmctrl -r "kicad" -b add,fullscreen 2>/dev/null || true
+    wmctrl -r "Schematic Editor" -b remove,decorated 2>/dev/null || true
+    wmctrl -r "escDesign" -b remove,decorated 2>/dev/null || true
+    wmctrl -r "Schematic Editor" -b add,fullscreen 2>/dev/null || true
+    wmctrl -r "escDesign" -b add,fullscreen 2>/dev/null || true
     
     # Use xdotool to send F11 (fullscreen toggle) if window ID found
     if [ -n "$WINDOW_ID" ]; then
@@ -76,13 +78,14 @@ for i in {1..20}; do
     fi
     
     # Fallback: try maximize if fullscreen doesn't work
-    wmctrl -r "KiCad" -b add,maximized_vert,maximized_horz 2>/dev/null || \
-    wmctrl -r "kicad" -b add,maximized_vert,maximized_horz 2>/dev/null || true
+    wmctrl -r "Schematic Editor" -b add,maximized_vert,maximized_horz 2>/dev/null || \
+    wmctrl -r "escDesign" -b add,maximized_vert,maximized_horz 2>/dev/null || \
+    wmctrl -r "KiCad" -b add,maximized_vert,maximized_horz 2>/dev/null || true
     
     sleep 0.15
 done
 
 echo "✅ Window resizing attempts complete" >&2
 
-# Wait for KiCad to exit so the session stays alive
+# Wait for schematic editor to exit so the session stays alive
 wait $APP_PID
