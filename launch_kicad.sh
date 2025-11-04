@@ -44,10 +44,10 @@ SCREEN_H=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $2}' || \
 echo "🖥️  Detected display size: ${SCREEN_W}x${SCREEN_H}" >&2
 
 # FORCE even larger dimensions - stretch beyond screen to ensure full coverage
-# Add 100 pixels to ensure it fills completely
-FORCE_W=$((SCREEN_W + 100))
-FORCE_H=$((SCREEN_H + 100))
-echo "🔧 Forcing larger window size: ${FORCE_W}x${FORCE_H}" >&2
+# Add 500 pixels width and 400 pixels height for MAXIMUM stretching
+FORCE_W=$((SCREEN_W + 500))
+FORCE_H=$((SCREEN_H + 400))
+echo "🔧 Forcing MAXIMUM window size: ${FORCE_W}x${FORCE_H}" >&2
 
 # Get window ID early for direct control - search for any window
 # KiCad 9.x might use different window titles
@@ -69,8 +69,8 @@ for i in {1..30}; do
     # If we have a window ID, use direct manipulation (most reliable)
     if [ -n "$WINDOW_ID" ]; then
         $XDOTOOL windowactivate "$WINDOW_ID" 2>/dev/null || true
-        # Move to top-left corner (negative offset to ensure edges are covered)
-        $XDOTOOL windowmove "$WINDOW_ID" -- -10 -10 2>/dev/null || true
+        # Move to top-left corner (large negative offset to ensure edges are covered)
+        $XDOTOOL windowmove "$WINDOW_ID" -- -50 -50 2>/dev/null || true
         # Force LARGER size to stretch the window
         $XDOTOOL windowsize "$WINDOW_ID" ${FORCE_W} ${FORCE_H} 2>/dev/null || true
         # Try F11 fullscreen toggle
