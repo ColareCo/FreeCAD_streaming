@@ -4,13 +4,8 @@ set -e
 # Detect current display size dynamically (DO NOT force a specific resolution)
 export DISPLAY=:0
 
-# Find xrandr path
-XRANDR=$(which xrandr 2>/dev/null || find /usr/bin /bin /usr/X11R6/bin -name xrandr 2>/dev/null | head -1 || echo "xrandr")
-
-# DETECT the current resolution (whatever DCV set it to)
-sleep 1
-CURRENT_RES=$($XRANDR 2>/dev/null | grep -oP '\d+x\d+' | head -1 || echo "unknown")
-echo "📐 Detected X display resolution: $CURRENT_RES (using DCV's dynamic size)" >&2
+# Find xdotool path
+XDOTOOL=$(which xdotool 2>/dev/null || find /usr/bin /bin -name xdotool 2>/dev/null | head -1 || echo "xdotool")
 
 # Open the ESC Design schematic directly in the schematic editor
 SCHEMATIC_PATH="/home/caduser/schematics/escDesign.kicad_sch"
@@ -22,84 +17,118 @@ echo "📐 Opening schematic directly: $SCHEMATIC_PATH" >&2
 
 APP_PID=$!
 
-# Give it a moment to create a window
-sleep 3
+# Give KiCad time to fully initialize and create windows
+echo "⏳ Waiting for KiCad to initialize..." >&2
+sleep 5
 
-# AGGRESSIVE maximization - try multiple times with different window names
-# Find xdotool path
-XDOTOOL=$(which xdotool 2>/dev/null || find /usr/bin /bin -name xdotool 2>/dev/null | head -1 || echo "xdotool")
-
-# Wait a bit longer for schematic editor to fully initialize
-sleep 2
-
-# Detect actual screen dimensions dynamically FIRST (before trying to resize)
-# Try multiple methods to get display geometry
-SCREEN_W=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $1}' || \
-           xrandr 2>/dev/null | grep -oP 'current \d+' | awk '{print $2}' || \
-           echo "1920")
-SCREEN_H=$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $2}' || \
-           xrandr 2>/dev/null | grep -oP 'current \d+ x \d+' | awk '{print $4}' || \
-           echo "1080")
+# Detect actual screen dimensions using xdotool (most reliable in DCV environment)
+SCREEN_W=$($XDOTOOL getdisplaygeometry 2>/dev/null | awk '{print $1}' || echo "1512")
+SCREEN_H=$($XDOTOOL getdisplaygeometry 2>/dev/null | awk '{print $2}' || echo "944")
 
 echo "🖥️  Detected display size: ${SCREEN_W}x${SCREEN_H}" >&2
 
-# FORCE even larger dimensions - stretch beyond screen to ensure full coverage
-# Add 500 pixels width and 400 pixels height for MAXIMUM stretching
-FORCE_W=$((SCREEN_W + 500))
-FORCE_H=$((SCREEN_H + 400))
-echo "🔧 Forcing MAXIMUM window size: ${FORCE_W}x${FORCE_H}" >&2
+# Find the main schematic editor window - look for visible windows only
+# Search by class first, then filter to find the largest visible window with "Schematic" in name
+echo "🔍 Searching for schematic editor window..." >&2
 
-# Get window ID early for direct control - search for any window
-# KiCad 9.x might use different window titles
-WINDOW_ID=$($XDOTOOL search --class "kicad" 2>/dev/null | head -1 || \
-            $XDOTOOL search --name "Schematic" 2>/dev/null | head -1 || \
-            $XDOTOOL search --name "escDesign" 2>/dev/null | head -1 || \
-            $XDOTOOL search --class "eeschema" 2>/dev/null | head -1 || echo "")
+# Find all visible eeschema windows
+WINDOW_IDS=$($XDOTOOL search --onlyvisible --class "eeschema" 2>/dev/null || echo "")
 
-if [ -n "$WINDOW_ID" ]; then
-    echo "✅ Found schematic editor window ID: $WINDOW_ID" >&2
-else
-    echo "⚠️  Warning: Could not find window ID, trying name-based maximization" >&2
+if [ -z "$WINDOW_IDS" ]; then
+    # Fallback: search by class without visibility filter
+    WINDOW_IDS=$($XDOTOOL search --class "eeschema" 2>/dev/null || echo "")
+    echo "⚠️  No visible windows found, searching all windows..." >&2
 fi
 
-# AGGRESSIVE window resizing - try FULLSCREEN mode to force fill
-echo "🎯 Attempting fullscreen mode to force window to fill display..." >&2
+WINDOW_ID=""
+LARGEST_SIZE=0
 
-for i in {1..30}; do
-    # If we have a window ID, use direct manipulation (most reliable)
-    if [ -n "$WINDOW_ID" ]; then
-        $XDOTOOL windowactivate "$WINDOW_ID" 2>/dev/null || true
-        # Move to top-left corner (large negative offset to ensure edges are covered)
-        $XDOTOOL windowmove "$WINDOW_ID" -- -50 -50 2>/dev/null || true
-        # Force LARGER size to stretch the window
-        $XDOTOOL windowsize "$WINDOW_ID" ${FORCE_W} ${FORCE_H} 2>/dev/null || true
-        # Try F11 fullscreen toggle
-        $XDOTOOL key --window "$WINDOW_ID" F11 2>/dev/null || true
+# Loop through all found windows to find the main one (largest with "Schematic" in name)
+for wid in $WINDOW_IDS; do
+    # Get window name and geometry
+    WINDOW_NAME=$($XDOTOOL getwindowname "$wid" 2>/dev/null || echo "")
+    GEOMETRY=$($XDOTOOL getwindowgeometry "$wid" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "0x0")
+    
+    # Extract width and height from geometry (format: WIDTHxHEIGHT)
+    W=$(echo "$GEOMETRY" | cut -d'x' -f1)
+    H=$(echo "$GEOMETRY" | cut -d'x' -f2)
+    
+    # Calculate window area
+    SIZE=$((W * H))
+    
+    # Check if this is likely the main window (has "Schematic" in name and is reasonably large)
+    if [[ "$WINDOW_NAME" == *"Schematic"* ]] || [[ "$WINDOW_NAME" == *"escDesign"* ]]; then
+        if [ "$SIZE" -gt "$LARGEST_SIZE" ] && [ "$SIZE" -gt 100000 ]; then  # At least 100k pixels
+            LARGEST_SIZE=$SIZE
+            WINDOW_ID=$wid
+            echo "✅ Found candidate window: $wid ($WINDOW_NAME) - ${W}x${H} (area: $SIZE)" >&2
+        fi
     fi
-    
-    # Remove ALL decorations and borders first
-    wmctrl -x -r "kicad" -b remove,decorations 2>/dev/null || true
-    wmctrl -x -r "eeschema" -b remove,decorations 2>/dev/null || true
-    wmctrl -r ":ACTIVE:" -b remove,decorations 2>/dev/null || true
-    
-    # Remove maximization state first (to allow resize)
-    wmctrl -x -r "kicad" -b remove,maximized_vert,maximized_horz 2>/dev/null || true
-    wmctrl -x -r "eeschema" -b remove,maximized_vert,maximized_horz 2>/dev/null || true
-    
-    # Now add maximization back
-    wmctrl -x -r "kicad" -b add,maximized_vert,maximized_horz 2>/dev/null || true
-    wmctrl -x -r "eeschema" -b add,maximized_vert,maximized_horz 2>/dev/null || true
-    wmctrl -r ":ACTIVE:" -b add,maximized_vert,maximized_horz 2>/dev/null || true
-    
-    # Try fullscreen as well
-    wmctrl -x -r "kicad" -b add,fullscreen 2>/dev/null || true
-    wmctrl -x -r "eeschema" -b add,fullscreen 2>/dev/null || true
-    wmctrl -r ":ACTIVE:" -b add,fullscreen 2>/dev/null || true
-    
-    sleep 0.08
 done
 
-echo "✅ Window resizing attempts complete" >&2
+# If we didn't find one by name, use the largest window
+if [ -z "$WINDOW_ID" ]; then
+    echo "⚠️  No window found by name, using largest window..." >&2
+    for wid in $WINDOW_IDS; do
+        GEOMETRY=$($XDOTOOL getwindowgeometry "$wid" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "0x0")
+        W=$(echo "$GEOMETRY" | cut -d'x' -f1)
+        H=$(echo "$GEOMETRY" | cut -d'x' -f2)
+        SIZE=$((W * H))
+        
+        if [ "$SIZE" -gt "$LARGEST_SIZE" ]; then
+            LARGEST_SIZE=$SIZE
+            WINDOW_ID=$wid
+            WINDOW_NAME=$($XDOTOOL getwindowname "$wid" 2>/dev/null || echo "unknown")
+            echo "✅ Selected largest window: $wid ($WINDOW_NAME) - ${W}x${H}" >&2
+        fi
+    done
+fi
 
-# Wait for schematic editor to exit so the session stays alive
+if [ -z "$WINDOW_ID" ]; then
+    echo "❌ ERROR: Could not find schematic editor window!" >&2
+    echo "   Available windows:" >&2
+    $XDOTOOL search --class "eeschema" 2>/dev/null | while read wid; do
+        NAME=$($XDOTOOL getwindowname "$wid" 2>/dev/null || echo "unknown")
+        GEOM=$($XDOTOOL getwindowgeometry "$wid" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "unknown")
+        echo "   Window $wid: $NAME ($GEOM)" >&2
+    done
+    exit 1
+fi
+
+# Verify we can get window geometry
+CURRENT_GEOM=$($XDOTOOL getwindowgeometry "$WINDOW_ID" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "unknown")
+echo "✅ Using window ID: $WINDOW_ID (Current size: $CURRENT_GEOM)" >&2
+
+# Calculate target size - slightly larger than display to ensure full coverage
+FORCE_W=$((SCREEN_W + 100))
+FORCE_H=$((SCREEN_H + 50))
+echo "🔧 Target window size: ${FORCE_W}x${FORCE_H}" >&2
+
+# AGGRESSIVE window resizing using only xdotool (wmctrl doesn't work in DCV)
+echo "🎯 Resizing window to fill display..." >&2
+
+for i in {1..40}; do
+    # Move window to top-left corner
+    $XDOTOOL windowmove "$WINDOW_ID" 0 0 2>/dev/null || true
+    
+    # Resize window to fill display (with padding)
+    $XDOTOOL windowsize "$WINDOW_ID" ${FORCE_W} ${FORCE_H} 2>/dev/null || true
+    
+    # Every 5 iterations, verify and log current size
+    if [ $((i % 5)) -eq 0 ]; then
+        CURRENT=$($XDOTOOL getwindowgeometry "$WINDOW_ID" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "unknown")
+        echo "   Iteration $i: Current size: $CURRENT" >&2
+    fi
+    
+    sleep 0.1
+done
+
+# Final verification
+FINAL_GEOM=$($XDOTOOL getwindowgeometry "$WINDOW_ID" 2>/dev/null | grep "Geometry" | awk '{print $2}' || echo "unknown")
+FINAL_POS=$($XDOTOOL getwindowgeometry "$WINDOW_ID" 2>/dev/null | grep "Position" | awk '{print $2}' || echo "unknown")
+echo "✅ Window resizing complete!" >&2
+echo "   Final size: $FINAL_GEOM at position $FINAL_POS" >&2
+echo "   Target was: ${FORCE_W}x${FORCE_H}" >&2
+
+# Keep the session alive - wait for schematic editor
 wait $APP_PID
