@@ -84,7 +84,8 @@
       "user_grid_x": "10 mil",
       "user_grid_y": "10 mil"
     },
-    "maximized": true,
+  "fullscreen": true,
+  "maximized": false,
     "pos_x": 0,
     "pos_y": 0,
     "size_x": 2560,
