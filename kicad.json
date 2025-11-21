@@ -87,8 +87,8 @@
     "maximized": true,
     "pos_x": 0,
     "pos_y": 0,
-    "size_x": 3840,
-    "size_y": 2160,
+    "size_x": 2560,
+    "size_y": 1440,
     "zoom_factors": [1.0]
   }
 
